@@ -1,1 +1,191 @@
+server.js instance 1
 
+const express = require('express');
+const mariadb = require('mariadb');
+const path = require('path');
+const bodyParser = require('body-parser');
+const app = express();
+const port = 80;
+
+// Create a MariaDB connection pool
+const pool = mariadb.createPool({
+    host: '127.0.0.1', // Use IP address to force TCP connection
+    port: 3306, 
+    user: 'ray',
+    password: 'secret', // Replace with your MariaDB password
+    database: 'userdb', // Our database name created above
+    connectionLimit: 5
+});
+// Set EJS as the view engine and set the views directory
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+// Use body-parser middleware to parse form data (if you prefer explicit usage)
+app.use(bodyParser.urlencoded({ extended: true }));
+// Alternatively, you can use Express's built-in parsing:
+// app.use(express.urlencoded({ extended: true }));
+// Route: Display form and customer table
+app.get('/', async (req, res) => {
+    console.log("test")
+let conn;
+try {
+    conn = await pool.getConnection();
+    console.log("test2")
+    // Get all customers from the table
+    const users = await conn.query();
+    console.log(users)
+    res.render('index', { users });
+} catch (err) {
+    res.status(500).send(`Error retrieving users: ${err}`);
+} finally {
+    if (conn) conn.release();
+}
+});
+
+app.get("/greeting", (req, res) => {
+    res.send("<h1>Hello World!</h1>");
+});
+
+app.post("/register", async (req, res) => {
+    const name = req.body.name;
+    let conn;
+    try {
+    conn = await pool.getConnection();
+    await conn.query('INSERT INTO users(name) VALUES (?)', [name]);
+    res.redirect('/');
+    } catch (err) {
+    console.loog("test")
+    res.status(500).send(`Error adding user: ${err}`);
+} finally {
+    if (conn) conn.release();
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on http://<external ip>:${port}`);
+});
+
+app.get("/list", async (req, res) => {
+    let conn;
+    try {
+    conn = await pool.getConnection();
+    // await conn.query('SELECT name FROM users');
+    const users = await conn.query('SELECT * FROM users');
+    res.json({ users: users});
+    } catch (err) {
+    console.loog("test")
+    res.status(500).send(`Error adding user: ${err}`);
+} finally {
+    if (conn) conn.release();
+    }
+});
+
+app.post("/clear", async (req, res) => {
+    let conn;
+    try {
+    conn = await pool.getConnection();
+    await conn.query('DELETE FROM users;');
+    res.redirect('/');
+    } catch (err) {
+    console.loog("test")
+    res.status(500).send(`Error adding user: ${err}`);
+} finally {
+    if (conn) conn.release();
+    }
+});
+
+server.js instance 2
+const express = require('express');
+const mariadb = require('mariadb');
+const path = require('path');
+const bodyParser = require('body-parser');
+const app = express();
+const port = 80;
+const axios = require('axios');
+// 34.31.66.116
+// Create a MariaDB connection pool
+const pool = mariadb.createPool({
+    host: '127.0.0.1', // Use IP address to force TCP connection
+    port: 3306, 
+    user: 'ray',
+    password: 'secret', // Replace with your MariaDB password
+    database: 'userdb', // Our database name created above
+    connectionLimit: 5
+});
+// Set EJS as the view engine and set the views directory
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+// Use body-parser middleware to parse form data (if you prefer explicit usage)
+app.use(bodyParser.urlencoded({ extended: true }));
+// Alternatively, you can use Express's built-in parsing:
+// app.use(express.urlencoded({ extended: true }));
+// Route: Display form and customer table
+app.get('/', async (req, res) => {
+    console.log("test")
+    try {
+        axios.get('http://34.31.66.116/list')
+        .then(response => { 
+          console.log(response.data);
+          const users = response.data.users;
+          res.render('index', {users});
+        })
+        .catch(error => {
+          console.error(error);
+        });
+       } catch (err) {
+        res.status(500).send(`Error clearing user: ${err}`);
+       }
+});
+
+app.get("/greeting", (req, res) => {
+    res.send("<h1>Hello World!</h1>");
+});
+
+app.post("/register", async (req, res) => {
+    const name = req.body.username;
+    try {
+        axios.post('http://34.31.66.116/register', {name})
+        .then(response => { 
+          console.log(response.data);
+          res.redirect('/');
+        })
+        .catch(error => {
+          console.error(error);
+        });
+       } catch (err) {
+        res.status(500).send(`Error registering user: ${err}`);
+       }
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on http://<external ip>:${port}`);
+});
+
+app.get("/list", async (req, res) => {
+    try {
+        axios.get('http://34.31.66.116/list')
+        .then(response => { 
+          console.log(response.data);
+          res.json(response.data);
+        })
+        .catch(error => {
+          console.error(error);
+        });
+       } catch (err) {
+        res.status(500).send(`Error listing user: ${err}`);
+       }
+});
+
+app.post("/clear", async (req, res) => {
+   try {
+    axios.post('http://34.31.66.116/clear')
+    .then(response => { 
+      console.log(response.data);
+      res.redirect('/');
+    })
+    .catch(error => {
+      console.error(error);
+    });
+   } catch (err) {
+    res.status(500).send(`Error listing user: ${err}`);
+   }
+});
